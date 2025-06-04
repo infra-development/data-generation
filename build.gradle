@@ -1,0 +1,34 @@
+plugins {
+    id 'java'
+    id 'scala'
+    id 'application'
+    id 'com.github.johnrengelman.shadow' version '8.1.1'
+}
+
+group = 'com.project'
+version = '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    testImplementation platform("org.junit:junit-bom:${junit_version}")
+    testImplementation "org.junit.jupiter:junit-jupiter"
+    implementation "org.scala-lang:scala-library:${scala_version}"
+    implementation "org.apache.spark:spark-sql_${scala_version_short}:${spark_version}"
+    implementation "com.github.javafaker:javafaker:${javafaker_version}"
+}
+
+test {
+    useJUnitPlatform()
+}
+
+// Optional: keep this for Gradle 'run' task, but not required for spark-submit
+application {
+    mainClass = 'com.project.app.FinanceDataGeneratorApp'
+}
+
+tasks.named('shadowJar') {
+    zip64 = true
+}
