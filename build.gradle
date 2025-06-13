@@ -20,6 +20,10 @@ dependencies {
     implementation "org.apache.spark:spark-hive_${scala_version_short}:${spark_version}"
     implementation "com.github.javafaker:javafaker:${javafaker_version}"
     implementation 'org.postgresql:postgresql:42.7.3'
+    implementation 'io.circe:circe-core_2.12:0.14.7'
+    implementation 'io.circe:circe-generic_2.12:0.14.7'
+    implementation 'io.circe:circe-parser_2.12:0.14.7'
+    implementation 'io.circe:circe-yaml_2.12:0.14.2'
 }
 
 test {
