@@ -11,6 +11,7 @@ import scala.util.Random
  */
 class CustomerInfoGenerator(faker: Faker = new Faker()) extends DataGenerator[CustomerInfo] {
 
+  val customerId = s"CUST${Random.alphanumeric.take(10).mkString}"
   val name = faker.name().fullName()
   val dob = f"${Random.nextInt(50) + 1950}-${Random.nextInt(12) + 1}%02d-${Random.nextInt(28) + 1}%02d"
   val gender = if (Random.nextBoolean()) "Male" else "Female"
@@ -24,6 +25,7 @@ class CustomerInfoGenerator(faker: Faker = new Faker()) extends DataGenerator[Cu
    */
   override def generate(): CustomerInfo = {
     CustomerInfo(
+      customerId = customerId,
       fullName = name,
       dateOfBirth = dob,
       gender = gender,
