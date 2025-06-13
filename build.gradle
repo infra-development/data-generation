@@ -17,7 +17,9 @@ dependencies {
     testImplementation "org.junit.jupiter:junit-jupiter"
     implementation "org.scala-lang:scala-library:${scala_version}"
     implementation "org.apache.spark:spark-sql_${scala_version_short}:${spark_version}"
+    implementation "org.apache.spark:spark-hive_${scala_version_short}:${spark_version}"
     implementation "com.github.javafaker:javafaker:${javafaker_version}"
+    implementation 'org.postgresql:postgresql:42.7.3'
 }
 
 test {
