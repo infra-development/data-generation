@@ -1,10 +1,17 @@
 package com.project.config.provider
 
 import com.project.config.parser.ConfigParser
-import org.apache.zookeeper.ZooKeeper
+import org.apache.zookeeper.{WatchedEvent, Watcher, ZooKeeper}
 
-class ZookeeperConfigProvider(zkAddress: String) extends ConfigProvider {
-  private val zk = new ZooKeeper(zkAddress, 2000, null)
+class ZookeeperConfigProvider extends ConfigProvider {
+
+  val watcher = new Watcher {
+    override def process(event: WatchedEvent): Unit = {
+      println(s"Event triggered: ${event.getType} on path: ${event.getPath}")
+    }
+  }
+
+  private val zk = new ZooKeeper("localhost:2181", 2000, watcher)
 
   def loadBusinessConfig[T](path: String, parser: ConfigParser[T]): Option[T] = {
     try {

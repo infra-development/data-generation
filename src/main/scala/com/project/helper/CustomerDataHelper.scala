@@ -6,20 +6,46 @@ import com.project.model.CustomerInfo
 import org.apache.spark.sql.{SparkSession, Dataset, Encoders}
 import org.apache.spark.sql.functions._
 import com.project.ProjectConstants._
+import org.apache.logging.log4j.{LogManager, Logger}
 
 class CustomerDataHelper(spark: SparkSession, dataManager: BusinessDateDataManager) {
-  def build(businessDate: String, prevDate: String): Dataset[CustomerInfo] = {
-    import spark.implicits._
-    val prevDF = dataManager.loadPartition(CUSTOMERS, prevDate)
-    val prevIds = if (!prevDF.isEmpty) prevDF.select(CUSTOMER_ID).as[String].collect().toSet else Set.empty[String]
-    val prevCustomers = if (!prevDF.isEmpty) prevDF.drop(BUSINESS_DATE).as[CustomerInfo].collect().toSeq else Seq.empty
 
-    val initialCount = 1000
-    val newCount = if (prevIds.nonEmpty) Math.ceil(prevIds.size * 0.08).toInt else initialCount
+  private val logger: Logger = LogManager.getLogger(getClass)
+
+  def build(businessDate: String, prevDate: String, initialCount: Int): Dataset[CustomerInfo] = {
+    import spark.implicits._
+
+    logger.info(s"Building customer dataset for businessDate: $businessDate, using previous date: $prevDate")
+
+    val prevDF = dataManager.loadPartition(CUSTOMERS, prevDate)
+
+    val prevIds =
+      if (!prevDF.isEmpty) {
+        logger.debug("Previous customer data found. Extracting IDs.")
+        prevDF.select(CUSTOMER_ID).as[String].collect().toSet
+      } else {
+        logger.warn(s"No previous customer data found for date: $prevDate")
+        Set.empty[String]
+      }
+
+    val prevCustomers =
+      if (!prevDF.isEmpty) {
+        logger.debug("Extracting previous customer records as case class instances.")
+        prevDF.drop(BUSINESS_DATE).as[CustomerInfo].collect().toSeq
+      } else {
+        Seq.empty[CustomerInfo]
+      }
+
+    val newCount =
+      if (prevIds.nonEmpty) Math.ceil(prevIds.size * 0.08).toInt
+      else initialCount
+
+    logger.info(s"Generating $newCount new customer records.")
 
     val generator = new CustomerInfoGenerator()
     val newCustomers = collection.mutable.ArrayBuffer[CustomerInfo]()
     var usedIds = prevIds
+
     while (newCustomers.size < newCount) {
       val c = generator.generate()
       if (!usedIds.contains(c.customerId)) {
@@ -27,12 +53,18 @@ class CustomerDataHelper(spark: SparkSession, dataManager: BusinessDateDataManag
         usedIds += c.customerId
       }
     }
+
+    logger.debug(s"Generated ${newCustomers.size} new unique customers.")
+
     val all = prevCustomers ++ newCustomers
 
-    // Convert generated data to Spark Datasets for further processing or saving
-    // Both lines will work exactly same way, but using Encoders.product is more type-safe and also allows for better optimization by Spark
-    // If you want to use Encoders.product, you need to define the case class for CustomerInfo
-    // You do not need to pass the Encoder explicitly if you have import spark.implicits._ and the type is a case class.
-    spark.createDataset(all)(Encoders.product[CustomerInfo]).withColumn(BUSINESS_DATE, lit(businessDate)).as[CustomerInfo]
+    val resultDS = spark
+      .createDataset(all)(Encoders.product[CustomerInfo])
+      .withColumn(BUSINESS_DATE, lit(businessDate))
+      .as[CustomerInfo]
+
+    logger.info(s"Customer dataset for date $businessDate built with total size: ${resultDS.count()}")
+
+    resultDS
   }
 }

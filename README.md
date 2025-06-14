@@ -34,3 +34,7 @@ FinanceDataGeneratorApp zookeeper zk-host:2181 yaml /path/to/config.yaml
 "threshold": 1000,
 "generateAccountData": true
 }
+
+
+
+set /config/data_gen/finance-data '{"businessDate": "2025-06-13",\n"threshold": 1000,\n"generateAccountData": true}'

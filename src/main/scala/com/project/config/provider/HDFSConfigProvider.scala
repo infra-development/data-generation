@@ -4,9 +4,8 @@ import com.project.config.parser.ConfigParser
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{FileSystem, Path}
 
-class HDFSConfigProvider(hdfsUri: String) extends ConfigProvider {
+class HDFSConfigProvider extends ConfigProvider {
   private val conf = new Configuration()
-  conf.set("fs.defaultFS", hdfsUri)
   private val fs = FileSystem.get(conf)
 
   def loadBusinessConfig[T](path: String, parser: ConfigParser[T]): Option[T] = {

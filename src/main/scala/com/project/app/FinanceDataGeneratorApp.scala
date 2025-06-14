@@ -1,79 +1,105 @@
 package com.project.app
 
-import com.project.ProjectConstants.{ACCOUNTS, CUSTOMERS, FINANCE_DB}
+import com.project.ProjectConstants.{ACCOUNTS, CUSTOMERS}
 import com.project.config.parser.{ConfigParser, JsonConfigParser, YamlConfigParser}
-import com.project.config.provider.{HDFSConfigProvider, ZookeeperConfigProvider}
 import com.project.config.{BusinessConfig, ConfigProviderFactory}
 import com.project.helper.{AccountDataHelper, CustomerDataHelper}
 import com.project.manager.BusinessDateDataManager
 import io.circe.generic.auto._
+import org.apache.logging.log4j.{LogManager, Logger}
+import org.apache.spark.sql.SparkSession
 
 import java.time.LocalDate
 
-
 object FinanceDataGeneratorApp {
-  def main(args: Array[String]): Unit = {
+  val logger: Logger = LogManager.getLogger(this.getClass)
 
-    if (args.length < 4) {
-      println("Usage: FinanceDataGeneratorApp <provider> <location> <format> <configPath>")
-      println("provider: hdfs | zookeeper")
-      println("location: e.g. hdfs://host:port or zk-host:port")
-      println("format: json | yaml")
-      println("configPath: path in HDFS or ZooKeeper")
+  def main(args: Array[String]): Unit = {
+    logger.info("Starting FinanceDataGeneratorApp...")
+
+    if (args.length < 3) {
+      logger.error("Insufficient arguments passed to application.")
+      logger.info("Usage: FinanceDataGeneratorApp <provider> <location> <format> <configPath>")
+      logger.info("provider: hdfs | zookeeper")
+      logger.info("format: json | yaml")
+      logger.info("configPath: path in HDFS or ZooKeeper")
       sys.exit(1)
     }
 
     val providerType = args(0).toLowerCase
-    val location = args(1)
-    val format = args(2).toLowerCase
-    val configPath = args(3)
+    val format = args(1).toLowerCase
+    val configPath = args(2)
+
+    logger.info(s"Provider: $providerType, Format: $format, ConfigPath: $configPath")
 
     val parser: ConfigParser[BusinessConfig] = format match {
-      case "json" => new JsonConfigParser[BusinessConfig]
-      case "yaml" => new YamlConfigParser[BusinessConfig]
-      case _ => throw new IllegalArgumentException("Unsupported format: " + format)
+      case "json" =>
+        logger.debug("Using JSON config parser.")
+        new JsonConfigParser[BusinessConfig]
+      case "yaml" | "yml" =>
+        logger.debug("Using YAML config parser.")
+        new YamlConfigParser[BusinessConfig]
+      case unsupported =>
+        logger.error(s"Unsupported config format: $unsupported")
+        throw new IllegalArgumentException(s"Unsupported format: $unsupported")
     }
 
-    val configOpt: Option[BusinessConfig] = providerType match {
-      case "hdfs" =>
-        val provider = new HDFSConfigProvider(location)
-        provider.loadBusinessConfig(configPath, parser)
-      case "zookeeper" =>
-        val provider = new ZookeeperConfigProvider(location)
-        provider.loadBusinessConfig(configPath, parser)
-      case _ =>
-        throw new IllegalArgumentException("Unsupported provider: " + providerType)
-    }
+    logger.debug("Attempting to load business config...")
+    val configOpt = ConfigProviderFactory(providerType).loadBusinessConfig[BusinessConfig](configPath, parser)
 
     val businessConfig = configOpt.getOrElse {
+      logger.error("Could not load business configuration!")
       throw new RuntimeException("Could not load business configuration!")
     }
 
-    val prevDate = LocalDate.parse(businessConfig.businessDate).minusDays(1).toString
+    logger.info(s"Loaded business config: $businessConfig")
 
-    val spark = org.apache.spark.sql.SparkSession.builder()
+    val prevDate = LocalDate.parse(businessConfig.businessDate).minusDays(1).toString
+    logger.info(s"Business Date: ${businessConfig.businessDate}, Previous Date: $prevDate")
+    logger.info(s"Threshold: ${businessConfig.threshold}")
+    logger.info(s"Generate Account Data: ${businessConfig.generateAccountData}")
+
+    logger.debug("Creating Spark session...")
+    val spark: SparkSession = SparkSession.builder()
       .appName("Finance Data Generator")
-      .master("local[*]")
-      .enableHiveSupport()// Use local mode for testing
+      .master("local[*]") // For local testing
+      .enableHiveSupport()
       .getOrCreate()
 
+    logger.debug("Spark session created successfully.")
+
+    logger.debug("Verifying available Hive databases...")
     val df = spark.sql("SHOW DATABASES")
-    df.show() // Display existing databases for verification
+    df.show()
+    logger.info("Hive databases listed successfully.")
 
-    val dataManager = new BusinessDateDataManager(spark)
+    try {
+      val dataManager = new BusinessDateDataManager(spark)
 
-    // Generate customer data
-    val customerDataBuilder = new CustomerDataHelper(spark, dataManager)
-    val customerDS = customerDataBuilder.build(businessConfig.businessDate, prevDate)
-    dataManager.writePartition(customerDS.toDF(), CUSTOMERS)
+      logger.info("Generating customer data...")
+      val customerDataBuilder = new CustomerDataHelper(spark, dataManager)
+      val customerDS = customerDataBuilder.build(businessConfig.businessDate, prevDate, businessConfig.threshold.getOrElse(1000))
+      logger.debug(s"Customer records count: ${customerDS.count()}")
+      dataManager.writePartition(customerDS.toDF(), CUSTOMERS)
+      logger.info("Customer data written successfully.")
 
-    // Generate account data
-    val accountDataBuilder = new AccountDataHelper(spark, dataManager, customerDS.collect().map(_.customerId))
-    val accountDS = accountDataBuilder.build(businessConfig.businessDate, prevDate)
-    dataManager.writePartition(accountDS.toDF(), ACCOUNTS)
+      logger.info("Generating account data...")
+      val customerIds = customerDS.collect().map(_.customerId)
+      val accountDataBuilder = new AccountDataHelper(spark, dataManager, customerIds)
+      val accountDS = accountDataBuilder.build(businessConfig.businessDate, prevDate, businessConfig.threshold.getOrElse(1000))
+      logger.debug(s"Account records count: ${accountDS.count()}")
+      dataManager.writePartition(accountDS.toDF(), ACCOUNTS)
+      logger.info("Account data written successfully.")
 
-    spark.stop()
+    } catch {
+      case ex: Exception =>
+        logger.error("Exception during data generation process.", ex)
+        throw ex
+    } finally {
+      logger.info("Stopping Spark session.")
+      spark.stop()
+    }
 
+    logger.info("FinanceDataGeneratorApp completed.")
   }
-
 }
