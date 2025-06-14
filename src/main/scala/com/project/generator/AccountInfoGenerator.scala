@@ -16,7 +16,7 @@ class AccountInfoGenerator(faker: Faker = new Faker(), customerIds: Seq[String])
     val accountTypes = Seq("Investment", "Savings", "Retirement")
     val statuses = Seq("Active", "Dormant", "Closed")
 
-    val accountId = s"ACC${Random.alphanumeric.take(8).mkString}"
+    val accountId = s"ACC${Random.alphanumeric.take(8).mkString}".toUpperCase
     val customerId = customerIds(Random.nextInt(customerIds.length))
     val accountType = accountTypes(Random.nextInt(accountTypes.length))
     val openDate = f"${Random.nextInt(10) + 2015}-${Random.nextInt(12) + 1}%02d-${Random.nextInt(28) + 1}%02d"

@@ -11,8 +11,8 @@
         </Root>
 
         <!-- Optional: Add custom package logging levels -->
-        <Logger name="com.project" level="debug" additivity="false">
-            <AppenderRef ref="Console" />
-        </Logger>
+<!--        <Logger name="com.project" level="debug" additivity="false">-->
+<!--            <AppenderRef ref="Console" />-->
+<!--        </Logger>-->
     </Loggers>
 </Configuration>

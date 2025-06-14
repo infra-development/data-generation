@@ -6,7 +6,8 @@ import com.project.config.{BusinessConfig, ConfigProviderFactory}
 import com.project.helper.{AccountDataHelper, CustomerDataHelper}
 import com.project.manager.BusinessDateDataManager
 import io.circe.generic.auto._
-import org.apache.logging.log4j.{LogManager, Logger}
+import org.apache.logging.log4j.core.config.Configurator
+import org.apache.logging.log4j.{Level, LogManager, Logger}
 import org.apache.spark.sql.SparkSession
 
 import java.time.LocalDate
@@ -15,6 +16,7 @@ object FinanceDataGeneratorApp {
   val logger: Logger = LogManager.getLogger(this.getClass)
 
   def main(args: Array[String]): Unit = {
+    Configurator.setRootLevel(Level.DEBUG)
     logger.info("Starting FinanceDataGeneratorApp...")
 
     if (args.length < 3) {
@@ -52,12 +54,17 @@ object FinanceDataGeneratorApp {
       throw new RuntimeException("Could not load business configuration!")
     }
 
+    val logLevel = businessConfig.loggingLevel.getOrElse("INFO").toUpperCase
+    Configurator.setRootLevel(Level.toLevel(logLevel))
+    logger.info(s"Log level updated to $logLevel")
+
     logger.info(s"Loaded business config: $businessConfig")
 
     val prevDate = LocalDate.parse(businessConfig.businessDate).minusDays(1).toString
     logger.info(s"Business Date: ${businessConfig.businessDate}, Previous Date: $prevDate")
     logger.info(s"Threshold: ${businessConfig.threshold}")
     logger.info(s"Generate Account Data: ${businessConfig.generateAccountData}")
+//    System.exit(0)
 
     logger.debug("Creating Spark session...")
     val spark: SparkSession = SparkSession.builder()
