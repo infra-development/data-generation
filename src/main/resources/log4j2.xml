@@ -2,17 +2,37 @@
 <Configuration status="WARN">
     <Appenders>
         <Console name="Console" target="SYSTEM_OUT">
-            <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss} [%t] %-5level %logger{36} - %msg%n" />
+            <PatternLayout disableAnsi="false" charset="UTF-8"
+                           pattern="%style{%d{yyyy-MM-dd HH:mm:ss}}{cyan} [%style{%t}{magenta}] %highlight{%-5level}{FATAL=bright red, ERROR=red, WARN=yellow, INFO=bright green, DEBUG=blue, TRACE=cyan} %highlight{%logger{36}}{FATAL=bright red, ERROR=red, WARN=yellow, INFO=bright green, DEBUG=blue, TRACE=cyan} - %highlight{%msg}{FATAL=bright red, ERROR=red, WARN=yellow, INFO=bright green, DEBUG=blue, TRACE=cyan}%n"/>
         </Console>
     </Appenders>
+
     <Loggers>
+        <!-- Root logger: INFO level for your app -->
         <Root level="info">
-            <AppenderRef ref="Console" />
+            <AppenderRef ref="Console"/>
         </Root>
 
-        <!-- Optional: Add custom package logging levels -->
-<!--        <Logger name="com.project" level="debug" additivity="false">-->
-<!--            <AppenderRef ref="Console" />-->
-<!--        </Logger>-->
+        <!-- Spark internal logs: WARN and above -->
+        <Logger name="org.apache.spark" level="warn" additivity="false">
+            <AppenderRef ref="Console"/>
+        </Logger>
+
+        <!-- Hadoop logs: ERROR and above -->
+        <Logger name="org.apache.hadoop" level="error" additivity="false">
+            <AppenderRef ref="Console"/>
+        </Logger>
+
+        <!-- Spark shaded projects -->
+        <Logger name="org.sparkproject" level="warn" additivity="false">
+            <AppenderRef ref="Console"/>
+        </Logger>
+
+        <!-- Uncomment this to color your application package logs if needed -->
+        <!--
+        <Logger name="com.project" level="info" additivity="false">
+            <AppenderRef ref="Console"/>
+        </Logger>
+        -->
     </Loggers>
 </Configuration>
