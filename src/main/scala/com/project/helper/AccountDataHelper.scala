@@ -16,9 +16,9 @@ class AccountDataHelper(spark: SparkSession, dataManager: BusinessDateDataManage
     import spark.implicits._
 
     logger.info(s"Building account dataset for businessDate: $businessDate, using previous date: $prevDate")
-
     val prevDF = dataManager.loadPartition(ACCOUNTS, prevDate)
 
+    // Extract previous account IDs
     val prevIds =
       if (!prevDF.isEmpty) {
         logger.debug("Previous account data found. Extracting IDs.")
@@ -28,6 +28,7 @@ class AccountDataHelper(spark: SparkSession, dataManager: BusinessDateDataManage
         Set.empty[String]
       }
 
+    // Convert previous rows to case class
     val prevAccounts =
       if (!prevDF.isEmpty) {
         logger.debug("Extracting previous account records as case class instances.")
@@ -36,13 +37,22 @@ class AccountDataHelper(spark: SparkSession, dataManager: BusinessDateDataManage
         Seq.empty[AccountInfo]
       }
 
+    // Compute max numeric part from accountId like ACC000123
+    val maxAccountId = prevIds
+      .map(_.stripPrefix("ACC"))
+      .flatMap(id => scala.util.Try(id.toLong).toOption)
+      .foldLeft(0L)(Math.max)
+
+    // Decide number of new records
     val newCount =
       if (prevIds.nonEmpty) Math.ceil(prevIds.size * 0.08).toInt
       else initialCount
 
-    logger.info(s"Generating $newCount new account records.")
+    logger.info(s"Generating $newCount new account records starting from ID: ${maxAccountId + 1}.")
 
-    val generator = new AccountInfoGenerator(customerIds = customerIds)
+    // Initialize generator with new starting ID
+    val generator = new AccountInfoGenerator(customerIds = customerIds, startingId = maxAccountId + 1)
+
     val newAccounts = collection.mutable.ArrayBuffer[AccountInfo]()
     var usedIds = prevIds
 
@@ -55,7 +65,6 @@ class AccountDataHelper(spark: SparkSession, dataManager: BusinessDateDataManage
     }
 
     logger.debug(s"Generated ${newAccounts.size} new unique accounts.")
-
     val all = prevAccounts ++ newAccounts
 
     val resultDS = spark

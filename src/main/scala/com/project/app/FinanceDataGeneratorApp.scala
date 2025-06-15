@@ -5,6 +5,7 @@ import com.project.config.parser.{ConfigParser, JsonConfigParser, YamlConfigPars
 import com.project.config.{BusinessConfig, ConfigProviderFactory}
 import com.project.helper.{AccountDataHelper, CustomerDataHelper}
 import com.project.manager.BusinessDateDataManager
+import com.project.utils.StringUtils.StringOps
 import io.circe.generic.auto._
 import org.apache.logging.log4j.core.config.Configurator
 import org.apache.logging.log4j.{Level, LogManager, Logger}
@@ -87,7 +88,13 @@ object FinanceDataGeneratorApp {
       val customerDataBuilder = new CustomerDataHelper(spark, dataManager)
       val customerDS = customerDataBuilder.build(businessConfig.businessDate, prevDate, businessConfig.threshold.getOrElse(1000))
       logger.debug(s"Customer records count: ${customerDS.count()}")
-      dataManager.writePartition(customerDS.toDF(), CUSTOMERS)
+      val customerDF = customerDS.toDF()
+      val finalCustomerDF = customerDF.columns.foldLeft(customerDF) { (df, colName) =>
+        df.withColumnRenamed(colName, colName.camelToSnakeCase)
+      }
+      finalCustomerDF.show(false)
+      finalCustomerDF.printSchema()
+      dataManager.writePartition(finalCustomerDF, CUSTOMERS)
       logger.info("Customer data written successfully.")
 
       logger.info("Generating account data...")
@@ -95,8 +102,29 @@ object FinanceDataGeneratorApp {
       val accountDataBuilder = new AccountDataHelper(spark, dataManager, customerIds)
       val accountDS = accountDataBuilder.build(businessConfig.businessDate, prevDate, businessConfig.threshold.getOrElse(1000))
       logger.debug(s"Account records count: ${accountDS.count()}")
-      dataManager.writePartition(accountDS.toDF(), ACCOUNTS)
+      val accountDF = accountDS.toDF()
+      val finalAccountDF = accountDF.columns.foldLeft(accountDF) { (df, colName) =>
+        df.withColumnRenamed(colName, colName.camelToSnakeCase)
+      }
+      finalAccountDF.show(false)
+      finalAccountDF.printSchema()
+      dataManager.writePartition(finalAccountDF, ACCOUNTS)
       logger.info("Account data written successfully.")
+
+      // now update the config file from which we read the business date and set the business date to next day, if we read config from HDFS
+      // then we will write the updated config back to HDFS whatever file format we read be it json or yaml
+      // if we read config from zookeeper then we will update the zookeeper node with new business date whatever file format we read be it json or yaml
+      // we will create generalized code
+      if (providerType == "hdfs") {
+        logger.info("Updating business date in HDFS config file...")
+        val updatedConfig = businessConfig.copy(businessDate = LocalDate.parse(businessConfig.businessDate).plusDays(1).toString)
+        ConfigProviderFactory(providerType).updateBusinessConfig(configPath, updatedConfig, parser)
+        logger.info("Business date updated successfully in HDFS config file.")
+      } else if (providerType == "zookeeper") {
+        logger.info("Updating business date in ZooKeeper node...")
+        ConfigProviderFactory(providerType).updateBusinessConfig(configPath, businessConfig.copy(businessDate = LocalDate.parse(businessConfig.businessDate).plusDays(1).toString), parser)
+        logger.info("Business date updated successfully in ZooKeeper node.")
+      }
 
     } catch {
       case ex: Exception =>

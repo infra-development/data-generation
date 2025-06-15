@@ -4,19 +4,25 @@ import com.github.javafaker.Faker
 import com.project.model.AccountInfo
 import org.apache.logging.log4j.{LogManager, Logger}
 
+import java.util.concurrent.atomic.AtomicLong
 import scala.util.Random
 
-class AccountInfoGenerator(faker: Faker = new Faker(), customerIds: Seq[String]) extends DataGenerator[AccountInfo] {
+class AccountInfoGenerator(
+                            faker: Faker = new Faker(),
+                            customerIds: Seq[String],
+                            startingId: Long // Provide max(account_id) + 1
+                          ) extends DataGenerator[AccountInfo] {
 
   private val logger: Logger = LogManager.getLogger(getClass)
+  private val accountIdCounter = new AtomicLong(startingId)
 
-  logger.debug(s"AccountInfoGenerator initialized with ${customerIds.size} customer IDs.")
+  logger.debug(s"AccountInfoGenerator initialized with ${customerIds.size} customer IDs and starting ID: $startingId")
 
   override def generate(): AccountInfo = {
     val accountTypes = Seq("Investment", "Savings", "Retirement")
     val statuses = Seq("Active", "Dormant", "Closed")
 
-    val accountId = s"ACC${Random.alphanumeric.take(8).mkString}".toUpperCase
+    val accountId = f"ACC${accountIdCounter.getAndIncrement()}%06d"
     val customerId = customerIds(Random.nextInt(customerIds.length))
     val accountType = accountTypes(Random.nextInt(accountTypes.length))
     val openDate = f"${Random.nextInt(10) + 2015}-${Random.nextInt(12) + 1}%02d-${Random.nextInt(28) + 1}%02d"
@@ -25,7 +31,8 @@ class AccountInfoGenerator(faker: Faker = new Faker(), customerIds: Seq[String])
     val balance = BigDecimal(1000 + Random.nextDouble() * 100000).setScale(2, BigDecimal.RoundingMode.HALF_UP).toDouble
 
     logger.debug(s"Generating AccountInfo: ID=$accountId, CustomerId=$customerId")
-    val accountInfo = AccountInfo(
+
+    AccountInfo(
       accountId = accountId,
       customerId = customerId,
       accountType = accountType,
@@ -34,8 +41,5 @@ class AccountInfoGenerator(faker: Faker = new Faker(), customerIds: Seq[String])
       status = status,
       currentBalance = balance
     )
-
-    logger.debug(s"Generated AccountInfo: $accountInfo")
-    accountInfo
   }
 }

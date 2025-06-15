@@ -1,10 +1,11 @@
 package com.project.config.parser
 
-import io.circe.Decoder
-import io.circe.yaml.parser
+import io.circe.{Decoder, Encoder}
+import io.circe.syntax._
+import io.circe.yaml.{Printer, parser}
 import org.apache.logging.log4j.{LogManager, Logger}
 
-class YamlConfigParser[T: Decoder] extends ConfigParser[T] {
+class YamlConfigParser[T: Decoder : Encoder] extends ConfigParser[T] {
   private val logger: Logger = LogManager.getLogger(this.getClass)
 
   override def parse(content: String): Option[T] = {
@@ -26,5 +27,9 @@ class YamlConfigParser[T: Decoder] extends ConfigParser[T] {
             Some(obj)
         }
     }
+  }
+
+  override def serialize(config: T): String = {
+    Printer.spaces2.pretty(config.asJson)
   }
 }

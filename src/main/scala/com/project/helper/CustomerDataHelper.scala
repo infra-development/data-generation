@@ -36,13 +36,18 @@ class CustomerDataHelper(spark: SparkSession, dataManager: BusinessDateDataManag
         Seq.empty[CustomerInfo]
       }
 
+    val maxId = prevIds
+      .map(_.stripPrefix("CUST"))
+      .flatMap(id => scala.util.Try(id.toLong).toOption)
+      .foldLeft(0L)(Math.max)
+
     val newCount =
       if (prevIds.nonEmpty) Math.ceil(prevIds.size * 0.08).toInt
       else initialCount
 
     logger.info(s"Generating $newCount new customer records.")
 
-    val generator = new CustomerInfoGenerator()
+    val generator = new CustomerInfoGenerator(startingId = maxId + 1)
     val newCustomers = collection.mutable.ArrayBuffer[CustomerInfo]()
     var usedIds = prevIds
 
@@ -58,13 +63,12 @@ class CustomerDataHelper(spark: SparkSession, dataManager: BusinessDateDataManag
 
     val all = prevCustomers ++ newCustomers
 
-    val resultDS = spark
+    val customerDS = spark
       .createDataset(all)(Encoders.product[CustomerInfo])
       .withColumn(BUSINESS_DATE, lit(businessDate))
       .as[CustomerInfo]
 
-    logger.info(s"Customer dataset for date $businessDate built with total size: ${resultDS.count()}")
-
-    resultDS
+    logger.info(s"Customer dataset for date $businessDate built with total size: ${customerDS.count()}")
+    customerDS
   }
 }
