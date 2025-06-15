@@ -53,9 +53,9 @@ class CustomerDataHelper(spark: SparkSession, dataManager: BusinessDateDataManag
 
     while (newCustomers.size < newCount) {
       val c = generator.generate()
-      if (!usedIds.contains(c.customerId)) {
+      if (!usedIds.contains(c.customer_id)) {
         newCustomers += c
-        usedIds += c.customerId
+        usedIds += c.customer_id
       }
     }
 

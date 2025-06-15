@@ -58,9 +58,9 @@ class AccountDataHelper(spark: SparkSession, dataManager: BusinessDateDataManage
 
     while (newAccounts.size < newCount) {
       val a = generator.generate()
-      if (!usedIds.contains(a.accountId)) {
+      if (!usedIds.contains(a.account_id)) {
         newAccounts += a
-        usedIds += a.accountId
+        usedIds += a.account_id
       }
     }
 

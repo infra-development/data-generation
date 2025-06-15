@@ -1,11 +1,11 @@
 package com.project.model
 
 case class AccountInfo(
-                        accountId: String,
-                        customerId: String,
-                        accountType: String,
-                        openDate: String,
-                        closeDate: Option[String],
+                        account_id: String,
+                        customer_id: String,
+                        account_type: String,
+                        open_date: String,
+                        close_date: Option[String],
                         status: String,
-                        currentBalance: Double
+                        current_balance: Double
                       )

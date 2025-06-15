@@ -33,13 +33,13 @@ class AccountInfoGenerator(
     logger.debug(s"Generating AccountInfo: ID=$accountId, CustomerId=$customerId")
 
     AccountInfo(
-      accountId = accountId,
-      customerId = customerId,
-      accountType = accountType,
-      openDate = openDate,
-      closeDate = closeDate,
+      account_id = accountId,
+      customer_id = customerId,
+      account_type = accountType,
+      open_date = openDate,
+      close_date = closeDate,
       status = status,
-      currentBalance = balance
+      current_balance = balance
     )
   }
 }

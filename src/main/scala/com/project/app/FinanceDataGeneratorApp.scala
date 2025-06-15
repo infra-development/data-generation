@@ -98,7 +98,7 @@ object FinanceDataGeneratorApp {
       logger.info("Customer data written successfully.")
 
       logger.info("Generating account data...")
-      val customerIds = customerDS.collect().map(_.customerId)
+      val customerIds = customerDS.collect().map(_.customer_id)
       val accountDataBuilder = new AccountDataHelper(spark, dataManager, customerIds)
       val accountDS = accountDataBuilder.build(businessConfig.businessDate, prevDate, businessConfig.threshold.getOrElse(1000))
       logger.debug(s"Account records count: ${accountDS.count()}")
