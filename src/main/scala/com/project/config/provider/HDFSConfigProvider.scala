@@ -2,9 +2,12 @@ package com.project.config.provider
 
 import com.project.config.BusinessConfig
 import com.project.config.parser.ConfigParser
+import io.circe.Decoder
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{FileSystem, Path}
 import org.apache.logging.log4j.LogManager
+import scala.util.{Try, Success, Failure}
+
 
 class HDFSConfigProvider extends ConfigProvider {
 
@@ -12,81 +15,94 @@ class HDFSConfigProvider extends ConfigProvider {
   private val conf = new Configuration()
   private val fs = FileSystem.get(conf)
 
-  override def loadBusinessConfig[T](path: String, parser: ConfigParser[T]): Option[T] = {
-    try {
-      val hdfsPath = new Path(path)
-      logger.debug(s"Checking if config exists at: $hdfsPath")
 
-      if (fs.exists(hdfsPath)) {
-        logger.info(s"Config file found at: $hdfsPath. Reading content...")
+  override def loadBusinessConfig[T](path: String, parser: ConfigParser[T])(implicit decoder: Decoder[T]): Either[Throwable, T] = {
+    val hdfsPath = new Path(path)
+    logger.debug(s"Checking if config exists at: $hdfsPath")
 
+    if (!fs.exists(hdfsPath)) {
+      val msg = s"Config file does not exist at: $hdfsPath"
+      logger.error(msg)
+      Left(new RuntimeException(msg))
+    } else {
+      Try {
         val inputStream = fs.open(hdfsPath)
         val content = scala.io.Source.fromInputStream(inputStream).mkString
         inputStream.close()
-
-        logger.debug("Content read successfully. Parsing config...")
-        val parsed = parser.parse(content)
-
-        parsed match {
-          case Some(_) =>
-            logger.info("Config parsed successfully.")
-          case None =>
-            logger.error("Failed to parse config content.")
+        logger.debug("Config content read successfully.")
+        content
+      }.toEither
+        .flatMap(parser.parse) // this returns Either[Throwable, T]
+        .left.map { err =>
+          logger.error(s"Failed to load or parse config: ${err.getMessage}")
+          err
         }
-        parsed
-      } else {
-        logger.error(s"Config file does not exist at: $hdfsPath")
-        None
-      }
-    } catch {
-      case ex: Exception =>
-        logger.error(s"Exception occurred while loading config from HDFS at $path", ex)
-        None
+        .map { config =>
+          logger.info("Config parsed and loaded successfully.")
+          config
+        }
     }
   }
 
 
-  override def updateBusinessConfig[T](path: String, updatedConfig: BusinessConfig, parser: ConfigParser[T]): Option[T] = {
-    try {
-      val hdfsPath = new Path(path)
-      logger.debug(s"Checking if HDFS path exists: $hdfsPath")
 
-      if (fs.exists(hdfsPath)) {
-        logger.info(s"Config file found at: $hdfsPath. Reading content...")
 
+  override def updateBusinessConfig[T](path: String, updatedConfig: BusinessConfig, parser: ConfigParser[T])(implicit decoder: Decoder[T]): Either[Throwable, T] = {
+    val hdfsPath = new Path(path)
+    logger.debug(s"Checking if HDFS path exists: $hdfsPath")
+
+    if (!fs.exists(hdfsPath)) {
+      val err = new RuntimeException(s"Config file not found at: $hdfsPath")
+      logger.error(err.getMessage)
+      return Left(err)
+    }
+
+    logger.info(s"Config file found at: $hdfsPath. Reading content...")
+
+    for {
+      content <- Try {
         val inputStream = fs.open(hdfsPath)
         val content = scala.io.Source.fromInputStream(inputStream).mkString
         inputStream.close()
-
-        logger.debug("Config content read successfully. Parsing...")
-        parser.parse(content).map {
-          case config: BusinessConfig =>
-            logger.info("Parsed config successfully. Updating businessDate...")
-
-            val updated = config.copy(businessDate = updatedConfig.businessDate)
-            val serialized = parser.asInstanceOf[ConfigParser[BusinessConfig]].serialize(updated)
-
-            logger.debug(s"Serialized updated config: $serialized")
-            val outputStream = fs.create(hdfsPath, true)
-            outputStream.write(serialized.getBytes("UTF-8"))
-            outputStream.close()
-
-            logger.info(s"Updated businessDate and wrote config back to: $hdfsPath")
-            updated.asInstanceOf[T]
-
-          case _ =>
-            logger.error("Parsed object is not of type BusinessConfig")
-            throw new IllegalStateException("Parsed config is not a BusinessConfig")
-        }
-      } else {
-        logger.error(s"Config file not found at: $hdfsPath")
-        None
+        logger.debug("Config content read successfully.")
+        content
+      }.toEither.left.map { ex =>
+        logger.error(s"Failed to read config file: ${ex.getMessage}")
+        ex
       }
-    } catch {
-      case ex: Exception =>
-        logger.error(s"Failed to update config at: $path", ex)
-        None
-    }
+
+      parsed <- parser.parse(content).left.map { err =>
+        logger.error(s"Parsing failed: ${err.getMessage}")
+        err
+      }
+
+      updated <- parsed match {
+        case config: BusinessConfig =>
+          logger.info("Parsed config is of expected type BusinessConfig. Proceeding with update.")
+          val newConfig = config.copy(businessDate = updatedConfig.businessDate)
+
+          parser
+            .asInstanceOf[ConfigParser[BusinessConfig]]
+            .serialize(newConfig)
+            .flatMap { serialized =>
+              Try {
+                val outputStream = fs.create(hdfsPath, true)
+                outputStream.write(serialized.getBytes("UTF-8"))
+                outputStream.close()
+                logger.info(s"Successfully wrote updated config to: $hdfsPath")
+                newConfig.asInstanceOf[T]
+              }.toEither.left.map { ioErr =>
+                logger.error(s"Failed to write updated config: ${ioErr.getMessage}")
+                ioErr
+              }
+            }
+
+        case _ =>
+          val err = new IllegalStateException("Parsed config is not of type BusinessConfig")
+          logger.error(err.getMessage)
+          Left(err)
+      }
+    } yield updated
   }
 
 }

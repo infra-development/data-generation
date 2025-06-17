@@ -59,7 +59,7 @@ log_service() {
         log_wait "Starting $service..."
         # Hide deprecated warnings and info, but keep critical errors
         eval "$start_cmd" > /tmp/${service// /_}_start.log 2>&1 &
-        sleep 4
+        sleep 8
         if is_running "$pattern"; then
             log_ok "$service started successfully."
         else

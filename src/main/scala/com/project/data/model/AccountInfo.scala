@@ -1,4 +1,4 @@
-package com.project.model
+package com.project.data.model
 
 case class AccountInfo(
                         account_id: String,

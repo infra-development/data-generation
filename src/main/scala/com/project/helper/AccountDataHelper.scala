@@ -1,14 +1,18 @@
 package com.project.helper
 
 import com.project.ProjectConstants.{ACCOUNTS, ACCOUNT_ID, BUSINESS_DATE}
+import com.project.app.FinanceDataGeneratorApp.logger
+import com.project.data.model.AccountInfo
+import com.project.data.reader.BusinessDataReader
+import com.project.data.writer.BusinessDataWriter
 import com.project.manager.BusinessDateDataManager
 import com.project.generator.AccountInfoGenerator
-import com.project.model.AccountInfo
+import com.project.utils.StringUtils.StringOps
 import org.apache.spark.sql.{Dataset, Encoders, SparkSession}
 import org.apache.spark.sql.functions._
 import org.apache.logging.log4j.{LogManager, Logger}
 
-class AccountDataHelper(spark: SparkSession, dataManager: BusinessDateDataManager, customerIds: Seq[String]) {
+class AccountDataHelper(spark: SparkSession, dataReader: BusinessDataReader, dataWriter: BusinessDataWriter, customerIds: Seq[String]) {
 
   private val logger: Logger = LogManager.getLogger(getClass)
 
@@ -16,7 +20,7 @@ class AccountDataHelper(spark: SparkSession, dataManager: BusinessDateDataManage
     import spark.implicits._
 
     logger.info(s"Building account dataset for businessDate: $businessDate, using previous date: $prevDate")
-    val prevDF = dataManager.loadPartition(ACCOUNTS, prevDate)
+    val prevDF = dataReader.readPartition(prevDate, ACCOUNTS)
 
     // Extract previous account IDs
     val prevIds =
@@ -75,5 +79,18 @@ class AccountDataHelper(spark: SparkSession, dataManager: BusinessDateDataManage
     logger.info(s"Account dataset for date $businessDate built with total size: ${resultDS.count()}")
 
     resultDS
+  }
+
+  def writeAccountData(accountDS: Dataset[AccountInfo]): Unit = {
+
+    logger.debug(s"Account records count: ${accountDS.count()}")
+    val accountDF = accountDS.toDF()
+    val finalAccountDF = accountDF.columns.foldLeft(accountDF) { (df, colName) =>
+      df.withColumnRenamed(colName, colName.camelToSnakeCase)
+    }
+    finalAccountDF.show(false)
+    finalAccountDF.printSchema()
+    dataWriter.writePartition(finalAccountDF, ACCOUNTS)
+    logger.info("Account data written successfully.")
   }
 }
