@@ -2,6 +2,7 @@ package com.project.config.provider
 
 import com.project.config.BusinessConfig
 import com.project.config.parser.ConfigParser
+import io.circe.Decoder
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{FileSystem, Path}
 import org.apache.logging.log4j.LogManager
@@ -12,12 +13,12 @@ class HDFSConfigProvider extends ConfigProvider {
   private val conf = new Configuration()
   private val fs = FileSystem.get(conf)
 
-  override def loadBusinessConfig[T](path: String, parser: ConfigParser[T]): Option[T] = {
+  override def loadBusinessConfig[T](path: String, parser: ConfigParser[T])(implicit decoder: Decoder[T]): T = {
     try {
       val hdfsPath = new Path(path)
       logger.debug(s"Checking if config exists at: $hdfsPath")
 
-      if (fs.exists(hdfsPath)) {
+      val configOpt = if (fs.exists(hdfsPath)) {
         logger.info(s"Config file found at: $hdfsPath. Reading content...")
 
         val inputStream = fs.open(hdfsPath)
@@ -25,28 +26,32 @@ class HDFSConfigProvider extends ConfigProvider {
         inputStream.close()
 
         logger.debug("Content read successfully. Parsing config...")
-        val parsed = parser.parse(content)
+        val parsedConfig = parser.parse(content)
 
-        parsed match {
+        parsedConfig match {
           case Some(_) =>
             logger.info("Config parsed successfully.")
           case None =>
             logger.error("Failed to parse config content.")
         }
-        parsed
+        parsedConfig
       } else {
         logger.error(s"Config file does not exist at: $hdfsPath")
         None
       }
+      val businessConfig: T = configOpt.getOrElse {
+        logger.error("Could not load business configuration!")
+        throw new RuntimeException("Could not load business configuration!")
+      }
+      businessConfig
     } catch {
       case ex: Exception =>
-        logger.error(s"Exception occurred while loading config from HDFS at $path", ex)
-        None
+        throw new RuntimeException(s"Failed to load config from HDFS path: $path", ex)
     }
   }
 
 
-  override def updateBusinessConfig[T](path: String, updatedConfig: BusinessConfig, parser: ConfigParser[T]): Option[T] = {
+  override def updateBusinessConfig[T](path: String, updatedConfig: BusinessConfig, parser: ConfigParser[T])(implicit decoder: Decoder[T]) = {
     try {
       val hdfsPath = new Path(path)
       logger.debug(s"Checking if HDFS path exists: $hdfsPath")

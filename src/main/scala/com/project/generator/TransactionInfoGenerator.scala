@@ -1,7 +1,7 @@
 package com.project.generator
 
 import com.github.javafaker.Faker
-import com.project.model.TransactionInfo
+import com.project.data.model.TransactionInfo
 
 import scala.util.Random
 

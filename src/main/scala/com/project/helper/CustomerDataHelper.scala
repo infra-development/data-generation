@@ -1,14 +1,17 @@
 package com.project.helper
 
-import com.project.manager.BusinessDateDataManager
 import com.project.generator.CustomerInfoGenerator
-import com.project.model.CustomerInfo
-import org.apache.spark.sql.{SparkSession, Dataset, Encoders}
+import org.apache.spark.sql.{Dataset, Encoders, SparkSession}
 import org.apache.spark.sql.functions._
 import com.project.ProjectConstants._
+import com.project.app.FinanceDataGeneratorApp.logger
+import com.project.data.model.CustomerInfo
+import com.project.data.reader.BusinessDataReader
+import com.project.data.writer.BusinessDataWriter
+import com.project.utils.StringUtils.StringOps
 import org.apache.logging.log4j.{LogManager, Logger}
 
-class CustomerDataHelper(spark: SparkSession, dataManager: BusinessDateDataManager) {
+class CustomerDataHelper(spark: SparkSession, dataReader: BusinessDataReader, dataWriter: BusinessDataWriter) {
 
   private val logger: Logger = LogManager.getLogger(getClass)
 
@@ -17,7 +20,7 @@ class CustomerDataHelper(spark: SparkSession, dataManager: BusinessDateDataManag
 
     logger.info(s"Building customer dataset for businessDate: $businessDate, using previous date: $prevDate")
 
-    val prevDF = dataManager.loadPartition(CUSTOMERS, prevDate)
+    val prevDF = dataReader.readPartition(prevDate, CUSTOMERS)
 
     val prevIds =
       if (!prevDF.isEmpty) {
@@ -70,5 +73,16 @@ class CustomerDataHelper(spark: SparkSession, dataManager: BusinessDateDataManag
 
     logger.info(s"Customer dataset for date $businessDate built with total size: ${customerDS.count()}")
     customerDS
+  }
+
+  def writeCustomerData(customerDS: Dataset[CustomerInfo]): Unit = {
+    val customerDF = customerDS.toDF()
+    val finalCustomerDF = customerDF.columns.foldLeft(customerDF) { (df, colName) =>
+      df.withColumnRenamed(colName, colName.camelToSnakeCase)
+    }
+    finalCustomerDF.show(false)
+    finalCustomerDF.printSchema()
+    dataWriter.writePartition(finalCustomerDF, CUSTOMERS)
+    logger.info("Customer data written successfully.")
   }
 }

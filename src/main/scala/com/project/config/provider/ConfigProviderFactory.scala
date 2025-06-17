@@ -1,6 +1,5 @@
-package com.project.config
+package com.project.config.provider
 
-import com.project.config.provider.{ConfigProvider, HDFSConfigProvider, ZookeeperConfigProvider}
 import org.apache.logging.log4j.{LogManager, Logger}
 
 object ConfigProviderFactory {

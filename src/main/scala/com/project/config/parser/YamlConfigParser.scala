@@ -8,7 +8,7 @@ import org.apache.logging.log4j.{LogManager, Logger}
 class YamlConfigParser[T: Decoder : Encoder] extends ConfigParser[T] {
   private val logger: Logger = LogManager.getLogger(this.getClass)
 
-  override def parse(content: String): Option[T] = {
+  override def parse[T: Decoder](content: String): Option[T] = {
     logger.debug("Attempting to parse YAML content.")
 
     parser.parse(content) match {
@@ -30,6 +30,19 @@ class YamlConfigParser[T: Decoder : Encoder] extends ConfigParser[T] {
   }
 
   override def serialize(config: T): String = {
-    Printer.spaces2.pretty(config.asJson)
+    logger.debug("Serializing config of type: {}", config.getClass.getSimpleName)
+
+    try {
+      val jsonResult = config.asJson
+      logger.debug("Successfully converted config to JSON")
+
+      val result = Printer.spaces2.pretty(jsonResult)
+      logger.info("Config serialization completed successfully")
+      result
+    } catch {
+      case ex: Exception =>
+        logger.error("Failed to serialize config", ex)
+        throw ex
+    }
   }
 }

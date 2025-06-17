@@ -1,7 +1,7 @@
 package com.project.generator
 
 import com.github.javafaker.Faker
-import com.project.model.CustomerInfo
+import com.project.data.model.CustomerInfo
 import org.apache.logging.log4j.{LogManager, Logger}
 
 import java.util.concurrent.atomic.AtomicLong
