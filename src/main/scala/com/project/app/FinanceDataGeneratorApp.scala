@@ -6,7 +6,6 @@ import com.project.config.parser.ConfigParserFactory
 import com.project.config.provider.ConfigProviderFactory
 import com.project.factory.ObjectCreationFactory
 import com.project.helper.{AccountDataHelper, CustomerDataHelper, FinanceDataGenHelper}
-import io.circe.generic.auto._
 import org.apache.logging.log4j.core.config.Configurator
 import org.apache.logging.log4j.{Level, LogManager, Logger}
 
@@ -34,29 +33,11 @@ object FinanceDataGeneratorApp {
 
     logger.info(s"Provider: $providerType, Format: $format, ConfigPath: $configPath")
 
-    logger.debug("Attempting to load business config...")
-
-    val businessConfigResult: Either[Throwable, BusinessConfig] = for {
-      parser <- ConfigParserFactory[BusinessConfig](format)
-      provider = ConfigProviderFactory(providerType)
-      config <- provider.loadBusinessConfig[BusinessConfig](configPath, parser)
-    } yield config
-
-    val businessConfig = businessConfigResult match {
-      case Right(config) =>
-        logger.info("Business config loaded successfully.")
-        config
-
-      case Left(error) =>
-        logger.error(s"Failed to load business config: ${error.getMessage}", error)
-        throw new RuntimeException("Business config load failed", error)
-    }
-    logger.info(s"Loaded business config: $businessConfig")
+    val businessConfig = FinanceDataGenHelper.loadConfigs(format, providerType, configPath)
+    FinanceDataGenHelper.logConfigs(businessConfig)
 
     val prevDate = LocalDate.parse(businessConfig.businessDate).minusDays(1).toString
     logger.info(s"Business Date: ${businessConfig.businessDate}, Previous Date: $prevDate")
-    logger.info(s"Threshold: ${businessConfig.threshold}")
-    logger.info(s"Generate Account Data: ${businessConfig.generateAccountData}")
 
     val logLevel = businessConfig.loggingLevel.getOrElse("INFO").toUpperCase
     Configurator.setRootLevel(Level.toLevel(logLevel))
@@ -64,11 +45,7 @@ object FinanceDataGeneratorApp {
 
     val spark = FinanceDataGenHelper.createSparkSession()
 
-
-    logger.debug("Verifying available Hive databases...")
-    val df = spark.sql("SHOW DATABASES")
-    df.show()
-    logger.info("Hive databases listed successfully.")
+    FinanceDataGenHelper.verifyHiveConnection(spark)
 
     try {
       val tableDataReader = ObjectCreationFactory.createTablePartitionReader(spark)
@@ -87,34 +64,13 @@ object FinanceDataGeneratorApp {
       val accountDS = accountDataHelper.build(businessConfig.businessDate, prevDate, businessConfig.threshold.getOrElse(DEFAULT_THRESHOLD))
 
       accountDataHelper.writeAccountData(accountDS)
-
-      val result: Either[Throwable, BusinessConfig] = for {
-        parser <- ConfigParserFactory[BusinessConfig](format) // Ensures parser is typed correctly
-        provider = ConfigProviderFactory(providerType)
-        loadedConfig <- provider.loadBusinessConfig(configPath, parser)
-        updatedConfig = loadedConfig.copy(
-          businessDate = LocalDate.parse(loadedConfig.businessDate).plusDays(1).toString
-        )
-        savedConfig <- provider.updateBusinessConfig(configPath, updatedConfig, parser)
-      } yield savedConfig
-
-      result match {
-        case Right(updatedConfig) =>
-          logger.info(s"Business config updated successfully: $updatedConfig")
-        case Left(error) =>
-          logger.error(s"Failed to update business config: ${error.getMessage}", error)
-          throw new RuntimeException("Business config update failed", error)
-      }
-
     } catch {
       case ex: Exception =>
         logger.error("Exception during data generation process.", ex)
         throw ex
-    } finally {
-      logger.info("Stopping Spark session.")
-      spark.stop()
     }
 
+    FinanceDataGenHelper.updateConfigs(format, providerType, configPath)
     logger.info("FinanceDataGeneratorApp completed.")
   }
 }
