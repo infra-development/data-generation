@@ -7,6 +7,6 @@ import io.circe.Decoder
 trait ConfigProvider {
   def loadBusinessConfig[T](path: String, parser: ConfigParser[T])(implicit decoder: Decoder[T]): Either[Throwable, T]
 
-  def updateBusinessConfig[T](path: String, updatedConfig: BusinessConfig, parser: ConfigParser[T])(implicit decoder: Decoder[T]): Either[Throwable, T]
+  def updateBusinessConfig[T](path: String, updatedConfig: T, parser: ConfigParser[T])(implicit decoder: Decoder[T]): Either[Throwable, T]
 }
 

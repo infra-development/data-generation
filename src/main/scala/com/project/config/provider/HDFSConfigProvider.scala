@@ -45,10 +45,7 @@ class HDFSConfigProvider extends ConfigProvider {
     }
   }
 
-
-
-
-  override def updateBusinessConfig[T](path: String, updatedConfig: BusinessConfig, parser: ConfigParser[T])(implicit decoder: Decoder[T]): Either[Throwable, T] = {
+  override def updateBusinessConfig[T](path: String, updatedConfig: T, parser: ConfigParser[T])(implicit decoder: Decoder[T]): Either[Throwable, T] = {
     val hdfsPath = new Path(path)
     logger.debug(s"Checking if HDFS path exists: $hdfsPath")
 
@@ -58,52 +55,26 @@ class HDFSConfigProvider extends ConfigProvider {
       return Left(err)
     }
 
-    logger.info(s"Config file found at: $hdfsPath. Reading content...")
+    logger.info(s"Config file found at: $hdfsPath. Writing updated config...")
 
     for {
-      content <- Try {
-        val inputStream = fs.open(hdfsPath)
-        val content = scala.io.Source.fromInputStream(inputStream).mkString
-        inputStream.close()
-        logger.debug("Config content read successfully.")
-        content
-      }.toEither.left.map { ex =>
-        logger.error(s"Failed to read config file: ${ex.getMessage}")
-        ex
-      }
-
-      parsed <- parser.parse(content).left.map { err =>
-        logger.error(s"Parsing failed: ${err.getMessage}")
+      serialized <- parser.serialize(updatedConfig).left.map { err =>
+        logger.error(s"Failed to serialize config: ${err.getMessage}")
         err
       }
 
-      updated <- parsed match {
-        case config: BusinessConfig =>
-          logger.info("Parsed config is of expected type BusinessConfig. Proceeding with update.")
-          val newConfig = config.copy(businessDate = updatedConfig.businessDate)
-
-          parser
-            .asInstanceOf[ConfigParser[BusinessConfig]]
-            .serialize(newConfig)
-            .flatMap { serialized =>
-              Try {
-                val outputStream = fs.create(hdfsPath, true)
-                outputStream.write(serialized.getBytes("UTF-8"))
-                outputStream.close()
-                logger.info(s"Successfully wrote updated config to: $hdfsPath")
-                newConfig.asInstanceOf[T]
-              }.toEither.left.map { ioErr =>
-                logger.error(s"Failed to write updated config: ${ioErr.getMessage}")
-                ioErr
-              }
-            }
-
-        case _ =>
-          val err = new IllegalStateException("Parsed config is not of type BusinessConfig")
-          logger.error(err.getMessage)
-          Left(err)
+      _ <- Try {
+        val outputStream = fs.create(hdfsPath, true)
+        outputStream.write(serialized.getBytes("UTF-8"))
+        outputStream.close()
+        logger.info(s"Successfully wrote updated config to: $hdfsPath")
+      }.toEither.left.map { ioErr =>
+        logger.error(s"Failed to write config file: ${ioErr.getMessage}")
+        ioErr
       }
-    } yield updated
+
+    } yield updatedConfig
   }
+
 
 }

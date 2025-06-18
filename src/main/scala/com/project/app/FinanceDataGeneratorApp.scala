@@ -1,9 +1,10 @@
 package com.project.app
 
 import com.project.ProjectConstants.DEFAULT_THRESHOLD
-import com.project.config.BusinessConfig
+import com.project.config.{BusinessConfig, ConfigUpdater}
 import com.project.config.parser.ConfigParserFactory
 import com.project.config.provider.ConfigProviderFactory
+import io.circe.generic.auto._
 import com.project.factory.ObjectCreationFactory
 import com.project.helper.{AccountDataHelper, CustomerDataHelper, FinanceDataGenHelper}
 import org.apache.logging.log4j.core.config.Configurator
@@ -70,7 +71,10 @@ object FinanceDataGeneratorApp {
         throw ex
     }
 
-    FinanceDataGenHelper.updateConfigs(format, providerType, configPath)
+    val updater = new ConfigUpdater[BusinessConfig]()
+    val newBusinessDate = LocalDate.parse(businessConfig.businessDate).plusDays(1).toString
+    val result = updater.propagateConfigFrom(sourceProviderType = providerType, sourceFormat = format, sourcePath = configPath)
+//    FinanceDataGenHelper.updateConfigs(format, providerType, configPath)
     logger.info("FinanceDataGeneratorApp completed.")
   }
 }

@@ -32,6 +32,10 @@
             <AppenderRef ref="Console"/>
         </Logger>
 
+        <Logger name="org.apache.zookeeper" level="warn" additivity="false">
+            <AppenderRef ref="Console"/>
+        </Logger>
+
         <!-- Uncomment this to color your application package logs if needed -->
         <!--
         <Logger name="com.project" level="info" additivity="false">
