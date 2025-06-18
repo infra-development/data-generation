@@ -9,5 +9,6 @@ object ProjectConstants {
   val BUSINESS_DATE = "business_date"
   val CUSTOMER_ID = "customer_id"
   val ACCOUNT_ID = "account_id"
-  // Add more constants as needed
+
+  val DEFAULT_THRESHOLD = 1000
 }

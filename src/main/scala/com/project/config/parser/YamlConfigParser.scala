@@ -8,41 +8,36 @@ import org.apache.logging.log4j.{LogManager, Logger}
 class YamlConfigParser[T: Decoder : Encoder] extends ConfigParser[T] {
   private val logger: Logger = LogManager.getLogger(this.getClass)
 
-  override def parse[T: Decoder](content: String): Option[T] = {
+  override def parse(content: String): Either[Throwable, T] = {
     logger.debug("Attempting to parse YAML content.")
 
     parser.parse(content) match {
       case Left(parseError) =>
         logger.error(s"YAML parse error: ${parseError.getMessage}")
-        None
+        Left(parseError)
 
       case Right(json) =>
         logger.debug("YAML parsed successfully. Attempting to decode to target type.")
         json.as[T] match {
           case Left(decodingError) =>
             logger.error(s"YAML decoding error: ${decodingError.getMessage}")
-            None
+            Left(decodingError)
           case Right(obj) =>
             logger.debug("Successfully decoded YAML content to object.")
-            Some(obj)
+            Right(obj)
         }
     }
   }
 
-  override def serialize(config: T): String = {
+  override def serialize(config: T): Either[Throwable, String] = {
     logger.debug("Serializing config of type: {}", config.getClass.getSimpleName)
 
-    try {
-      val jsonResult = config.asJson
-      logger.debug("Successfully converted config to JSON")
+    val jsonResult = config.asJson
+    logger.debug("Successfully converted config to JSON")
 
-      val result = Printer.spaces2.pretty(jsonResult)
-      logger.info("Config serialization completed successfully")
-      result
-    } catch {
-      case ex: Exception =>
-        logger.error("Failed to serialize config", ex)
-        throw ex
-    }
+    val result = Printer.spaces2.pretty(jsonResult)
+    logger.info("Config serialization completed successfully")
+
+    Right(result)
   }
 }

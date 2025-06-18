@@ -1,6 +1,6 @@
 package com.project.app
 
-import com.project.ProjectConstants.{ACCOUNTS, CUSTOMERS}
+import com.project.ProjectConstants.{ACCOUNTS, CUSTOMERS, DEFAULT_THRESHOLD}
 import com.project.config.parser.{ConfigParser, ConfigParserFactory, JsonConfigParser, YamlConfigParser}
 import com.project.config.BusinessConfig
 import com.project.config.provider.ConfigProviderFactory
@@ -37,9 +37,23 @@ object FinanceDataGeneratorApp {
 
     logger.info(s"Provider: $providerType, Format: $format, ConfigPath: $configPath")
 
-    val parser = ConfigParserFactory(format)
     logger.debug("Attempting to load business config...")
-    val businessConfig = ConfigProviderFactory(providerType).loadBusinessConfig[BusinessConfig](configPath, parser)
+
+    val businessConfigResult: Either[Throwable, BusinessConfig] = for {
+      parser <- ConfigParserFactory[BusinessConfig](format)
+      provider = ConfigProviderFactory(providerType)
+      config <- provider.loadBusinessConfig[BusinessConfig](configPath, parser)
+    } yield config
+
+    val businessConfig = businessConfigResult match {
+      case Right(config) =>
+        logger.info("Business config loaded successfully.")
+        config
+
+      case Left(error) =>
+        logger.error(s"Failed to load business config: ${error.getMessage}", error)
+        throw new RuntimeException("Business config load failed", error)
+    }
     logger.info(s"Loaded business config: $businessConfig")
 
     val prevDate = LocalDate.parse(businessConfig.businessDate).minusDays(1).toString
@@ -65,7 +79,7 @@ object FinanceDataGeneratorApp {
 
       logger.info("Generating customer data...")
       val customerDataHelper = new CustomerDataHelper(spark, tableDataReader, tableDataWriter)
-      val customerDS = customerDataHelper.build(businessConfig.businessDate, prevDate, businessConfig.threshold.getOrElse(1000))
+      val customerDS = customerDataHelper.build(businessConfig.businessDate, prevDate, businessConfig.threshold.getOrElse(DEFAULT_THRESHOLD))
       logger.debug(s"Customer records count: ${customerDS.count()}")
 
       customerDataHelper.writeCustomerData(customerDS)
@@ -73,24 +87,26 @@ object FinanceDataGeneratorApp {
       logger.info("Generating account data...")
       val customerIds = customerDS.collect().map(_.customer_id)
       val accountDataHelper = new AccountDataHelper(spark, tableDataReader, tableDataWriter, customerIds)
-      val accountDS = accountDataHelper.build(businessConfig.businessDate, prevDate, businessConfig.threshold.getOrElse(1000))
+      val accountDS = accountDataHelper.build(businessConfig.businessDate, prevDate, businessConfig.threshold.getOrElse(DEFAULT_THRESHOLD))
 
       accountDataHelper.writeAccountData(accountDS)
 
+      val result: Either[Throwable, BusinessConfig] = for {
+        parser <- ConfigParserFactory[BusinessConfig](format) // Ensures parser is typed correctly
+        provider = ConfigProviderFactory(providerType)
+        loadedConfig <- provider.loadBusinessConfig(configPath, parser)
+        updatedConfig = loadedConfig.copy(
+          businessDate = LocalDate.parse(loadedConfig.businessDate).plusDays(1).toString
+        )
+        savedConfig <- provider.updateBusinessConfig(configPath, updatedConfig, parser)
+      } yield savedConfig
 
-      // now update the config file from which we read the business date and set the business date to next day, if we read config from HDFS
-      // then we will write the updated config back to HDFS whatever file format we read be it json or yaml
-      // if we read config from zookeeper then we will update the zookeeper node with new business date whatever file format we read be it json or yaml
-      // we will create generalized code
-      if (providerType == "hdfs") {
-        logger.info("Updating business date in HDFS config file...")
-        val updatedConfig = businessConfig.copy(businessDate = LocalDate.parse(businessConfig.businessDate).plusDays(1).toString)
-        ConfigProviderFactory(providerType).updateBusinessConfig(configPath, updatedConfig, parser)
-        logger.info("Business date updated successfully in HDFS config file.")
-      } else if (providerType == "zookeeper") {
-        logger.info("Updating business date in ZooKeeper node...")
-        ConfigProviderFactory(providerType).updateBusinessConfig(configPath, businessConfig.copy(businessDate = LocalDate.parse(businessConfig.businessDate).plusDays(1).toString), parser)
-        logger.info("Business date updated successfully in ZooKeeper node.")
+      result match {
+        case Right(updatedConfig) =>
+          logger.info(s"Business config updated successfully: $updatedConfig")
+        case Left(error) =>
+          logger.error(s"Failed to update business config: ${error.getMessage}", error)
+          throw new RuntimeException("Business config update failed", error)
       }
 
     } catch {
