@@ -1,15 +1,14 @@
 package com.project.helper
 
-import com.project.generator.CustomerInfoGenerator
-import org.apache.spark.sql.{Dataset, Encoders, SparkSession}
-import org.apache.spark.sql.functions._
 import com.project.ProjectConstants._
-import com.project.app.FinanceDataGeneratorApp.logger
 import com.project.data.model.CustomerInfo
 import com.project.data.reader.BusinessDataReader
 import com.project.data.writer.BusinessDataWriter
+import com.project.generator.CustomerInfoGenerator
 import com.project.utils.StringUtils.StringOps
 import org.apache.logging.log4j.{LogManager, Logger}
+import org.apache.spark.sql.functions._
+import org.apache.spark.sql.{Dataset, Encoders, SparkSession}
 
 class CustomerDataHelper(spark: SparkSession, dataReader: BusinessDataReader, dataWriter: BusinessDataWriter) {
 

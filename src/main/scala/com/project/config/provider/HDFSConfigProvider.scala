@@ -6,7 +6,8 @@ import io.circe.Decoder
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{FileSystem, Path}
 import org.apache.logging.log4j.LogManager
-import scala.util.{Try, Success, Failure}
+
+import scala.util.Try
 
 
 class HDFSConfigProvider extends ConfigProvider {

@@ -1,8 +1,8 @@
 package com.project.config.parser
 
-import io.circe.{Decoder, Encoder}
 import io.circe.syntax._
 import io.circe.yaml.{Printer, parser}
+import io.circe.{Decoder, Encoder}
 import org.apache.logging.log4j.{LogManager, Logger}
 
 class YamlConfigParser[T: Decoder : Encoder] extends ConfigParser[T] {

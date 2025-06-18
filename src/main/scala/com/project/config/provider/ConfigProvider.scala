@@ -2,7 +2,6 @@ package com.project.config.provider
 
 import com.project.config.BusinessConfig
 import com.project.config.parser.ConfigParser
-
 import io.circe.Decoder
 
 trait ConfigProvider {

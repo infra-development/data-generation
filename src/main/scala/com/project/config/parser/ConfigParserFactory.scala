@@ -1,8 +1,7 @@
 package com.project.config.parser
 
-import io.circe.generic.auto._
-import org.apache.logging.log4j.{LogManager, Logger}
 import io.circe.{Decoder, Encoder}
+import org.apache.logging.log4j.{LogManager, Logger}
 
 import scala.util.control.NonFatal
 

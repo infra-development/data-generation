@@ -2,7 +2,6 @@ package com.project.data.reader
 
 import com.project.ProjectConstants.BUSINESS_DATE
 import org.apache.logging.log4j.{LogManager, Logger}
-import org.apache.spark
 import org.apache.spark.sql.{DataFrame, SparkSession}
 
 import scala.util.{Failure, Success, Try}

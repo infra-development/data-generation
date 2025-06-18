@@ -1,9 +1,8 @@
 package com.project.config.provider
 
 import com.project.config.BusinessConfig
-import io.circe.generic.auto._
-import io.circe.Decoder
 import com.project.config.parser.ConfigParser
+import io.circe.Decoder
 import org.apache.logging.log4j.{LogManager, Logger}
 import org.apache.zookeeper.{WatchedEvent, Watcher, ZooKeeper}
 

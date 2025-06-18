@@ -1,17 +1,14 @@
 package com.project.app
 
-import com.project.ProjectConstants.{ACCOUNTS, CUSTOMERS, DEFAULT_THRESHOLD}
-import com.project.config.parser.{ConfigParser, ConfigParserFactory, JsonConfigParser, YamlConfigParser}
+import com.project.ProjectConstants.DEFAULT_THRESHOLD
 import com.project.config.BusinessConfig
+import com.project.config.parser.ConfigParserFactory
 import com.project.config.provider.ConfigProviderFactory
 import com.project.factory.ObjectCreationFactory
 import com.project.helper.{AccountDataHelper, CustomerDataHelper, FinanceDataGenHelper}
-import com.project.manager.BusinessDateDataManager
-import com.project.utils.StringUtils.StringOps
 import io.circe.generic.auto._
 import org.apache.logging.log4j.core.config.Configurator
 import org.apache.logging.log4j.{Level, LogManager, Logger}
-import org.apache.spark.sql.SparkSession
 
 import java.time.LocalDate
 

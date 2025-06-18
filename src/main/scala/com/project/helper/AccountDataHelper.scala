@@ -1,16 +1,14 @@
 package com.project.helper
 
 import com.project.ProjectConstants.{ACCOUNTS, ACCOUNT_ID, BUSINESS_DATE}
-import com.project.app.FinanceDataGeneratorApp.logger
 import com.project.data.model.AccountInfo
 import com.project.data.reader.BusinessDataReader
 import com.project.data.writer.BusinessDataWriter
-import com.project.manager.BusinessDateDataManager
 import com.project.generator.AccountInfoGenerator
 import com.project.utils.StringUtils.StringOps
-import org.apache.spark.sql.{Dataset, Encoders, SparkSession}
-import org.apache.spark.sql.functions._
 import org.apache.logging.log4j.{LogManager, Logger}
+import org.apache.spark.sql.functions._
+import org.apache.spark.sql.{Dataset, Encoders, SparkSession}
 
 class AccountDataHelper(spark: SparkSession, dataReader: BusinessDataReader, dataWriter: BusinessDataWriter, customerIds: Seq[String]) {
 
