@@ -40,11 +40,11 @@ object FinanceDataGeneratorApp {
     val prevDate = LocalDate.parse(businessConfig.businessDate).minusDays(1).toString
     logger.info(s"Business Date: ${businessConfig.businessDate}, Previous Date: $prevDate")
 
+    val spark = FinanceDataGenHelper.createSparkSession()
+
     val logLevel = businessConfig.loggingLevel.getOrElse("INFO").toUpperCase
     Configurator.setRootLevel(Level.toLevel(logLevel))
     logger.info(s"Log level updated to $logLevel")
-
-    val spark = FinanceDataGenHelper.createSparkSession()
 
     FinanceDataGenHelper.verifyHiveConnection(spark)
 

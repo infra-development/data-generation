@@ -40,4 +40,7 @@ application {
 
 tasks.named('shadowJar') {
     zip64 = true
+    relocate 'cats', 'shadow.cats'
+    relocate 'io.circe', 'shadow.io.circe'
+    relocate 'org.typelevel', 'shadow.org.typelevel'
 }
