@@ -15,32 +15,12 @@ object FinanceDataGenHelper {
     logger.debug("Creating Spark session...")
     val spark: SparkSession = SparkSession.builder()
       .appName("Finance Data Generator")
-      .master("local[*]") // For local testing
+//      .master("local[*]") // For local testing
       .enableHiveSupport()
       .getOrCreate()
 
     logger.debug("Spark session created successfully.")
     spark
-  }
-
-  def updateConfigs(format: String, providerType: String, configPath: String): Unit = {
-    val result: Either[Throwable, BusinessConfig] = for {
-      parser <- ConfigParserFactory[BusinessConfig](format) // Ensures parser is typed correctly
-      provider = ConfigProviderFactory(providerType)
-      loadedConfig <- provider.loadBusinessConfig(configPath, parser)
-      updatedConfig = loadedConfig.copy(
-        businessDate = LocalDate.parse(loadedConfig.businessDate).plusDays(1).toString
-      )
-      savedConfig <- provider.updateBusinessConfig(configPath, updatedConfig, parser)
-    } yield savedConfig
-
-    result match {
-      case Right(updatedConfig) =>
-        logger.info(s"Business config updated successfully: $updatedConfig")
-      case Left(error) =>
-        logger.error(s"Failed to update business config: ${error.getMessage}", error)
-        throw new RuntimeException("Business config update failed", error)
-    }
   }
 
   def logConfigs(businessConfig: BusinessConfig): Unit = {

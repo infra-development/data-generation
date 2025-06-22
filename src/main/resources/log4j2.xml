@@ -1,17 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Configuration status="WARN">
     <Appenders>
-        <!-- Console Appender with ANSI colors (for development) -->
+        <!-- Console Appender with ANSI color codes -->
         <Console name="Console" target="SYSTEM_OUT">
             <PatternLayout disableAnsi="false" charset="UTF-8"
-                           pattern="%style{%d{yyyy-MM-dd HH:mm:ss}}{cyan} [%style{%t}{magenta}] %highlight{%-5level}{FATAL=bright red, ERROR=red, WARN=yellow, INFO=bright green, DEBUG=blue, TRACE=cyan} %highlight{%logger{36}}{FATAL=bright red, ERROR=red, WARN=yellow, INFO=bright green, DEBUG=blue, TRACE=cyan} - %highlight{%msg}{FATAL=bright red, ERROR=red, WARN=yellow, INFO=bright green, DEBUG=blue, TRACE=cyan}%n"/>
+                           pattern="%style{%d{yyyy-MM-dd HH:mm:ss}}{cyan} [%style{%t}{magenta}] %highlight{%-5level}{FATAL=bright red, ERROR=red, WARN=yellow, INFO=green, DEBUG=blue, TRACE=cyan} %highlight{%logger{36}}{FATAL=bright red, ERROR=red, WARN=yellow, INFO=green, DEBUG=blue, TRACE=cyan} - %highlight{%msg}{FATAL=bright red, ERROR=red, WARN=yellow, INFO=green, DEBUG=blue, TRACE=cyan}%n"/>
         </Console>
 
-        <!-- File Appender for production logs -->
+        <!-- File Appender for clean, plain logs -->
         <RollingFile name="FileAppender"
                      fileName="logs/spark-app.log"
                      filePattern="logs/spark-app-%d{yyyy-MM-dd-HH}-%i.log.gz">
-            <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss} [%t] %-5level %logger{36} - %msg%n"/>
+            <PatternLayout charset="UTF-8"
+                           pattern="%d{yyyy-MM-dd HH:mm:ss} [%t] %-5level %logger{36} - %msg%n"/>
             <Policies>
                 <TimeBasedTriggeringPolicy interval="1" modulate="true"/>
                 <SizeBasedTriggeringPolicy size="50 MB"/>
@@ -21,12 +22,25 @@
     </Appenders>
 
     <Loggers>
+        <!-- Root logger -->
         <Root level="info">
             <AppenderRef ref="Console"/>
             <AppenderRef ref="FileAppender"/>
         </Root>
 
+        <!-- Specific packages -->
         <Logger name="org.apache.spark" level="warn" additivity="false">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="FileAppender"/>
+        </Logger>
+
+        <!-- Suppress unnecessary debug/info logs -->
+        <Logger name="io.netty" level="warn" additivity="false">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="FileAppender"/>
+        </Logger>
+
+        <Logger name="org.apache.hadoop.yarn.server.webproxy" level="warn" additivity="false">
             <AppenderRef ref="Console"/>
             <AppenderRef ref="FileAppender"/>
         </Logger>
@@ -35,6 +49,13 @@
             <AppenderRef ref="Console"/>
             <AppenderRef ref="FileAppender"/>
         </Logger>
+
+
+        <Logger name="org.sparkproject.jetty" level="warn" additivity="false">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="FileAppender"/>
+        </Logger>
+
 
         <Logger name="org.sparkproject" level="warn" additivity="false">
             <AppenderRef ref="Console"/>
@@ -56,5 +77,15 @@
             <AppenderRef ref="Console"/>
             <AppenderRef ref="FileAppender"/>
         </Logger>
+
+        <Logger name="org.apache.spark" level="info"/>
+        <Logger name="org.apache.spark.scheduler.DAGScheduler" level="warn"/>
+        <Logger name="org.apache.spark.storage.BlockManager" level="warn"/>
+        <Logger name="org.apache.spark.storage.BlockManagerInfo" level="warn"/>
+        <Logger name="org.apache.spark.sql.execution" level="warn"/>
+        <Logger name="org.apache.spark.sql.execution.datasources" level="warn"/>
+        <Logger name="org.apache.spark.sql.execution.FileSourceScanExec" level="warn"/>
+        <Logger name="org.apache.spark.broadcast.TorrentBroadcast" level="warn"/>
+
     </Loggers>
 </Configuration>

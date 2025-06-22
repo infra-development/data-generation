@@ -72,9 +72,7 @@ object FinanceDataGeneratorApp {
     }
 
     val updater = new ConfigUpdater[BusinessConfig]()
-    val newBusinessDate = LocalDate.parse(businessConfig.businessDate).plusDays(1).toString
     val result = updater.propagateConfigFrom(sourceProviderType = providerType, sourceFormat = format, sourcePath = configPath)
-//    FinanceDataGenHelper.updateConfigs(format, providerType, configPath)
     logger.info("FinanceDataGeneratorApp completed.")
   }
 }

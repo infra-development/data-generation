@@ -54,7 +54,6 @@ stop_service() {
     log_step "Checking $service status..."
     if is_running "$pattern"; then
         log_wait "$service is running. Stopping $service..."
-        # Suppress warnings/info, keep only critical errors
         eval "$stop_cmd" > /tmp/${service// /_}_stop.log 2>&1
         sleep 3
         if is_running "$pattern"; then
@@ -97,7 +96,11 @@ stop_service "Hadoop DataNode" "org.apache.hadoop.hdfs.server.datanode.DataNode"
 stop_service "Hadoop NameNode" "org.apache.hadoop.hdfs.server.namenode.NameNode" \
     "\$HADOOP_HOME/sbin/hadoop-daemon.sh stop namenode"
 
-# 8. Stop PostgreSQL
+# 8. Stop MapReduce JobHistory Server
+stop_service "MapReduce JobHistory Server" "JobHistoryServer" \
+    "\$HADOOP_HOME/sbin/mr-jobhistory-daemon.sh stop historyserver"
+
+# 9. Stop PostgreSQL
 log_step "Checking PostgreSQL status..."
 if is_postgres_ready; then
     log_wait "Stopping PostgreSQL..."
@@ -115,4 +118,4 @@ else
 fi
 log_divider
 
-echo -e "${GREEN}🎉 All Hadoop, Hive, ZooKeeper, and PostgreSQL services are stopped!${NC}"
+echo -e "${GREEN}🎉 All Hadoop, Hive, ZooKeeper, JobHistory, and PostgreSQL services are stopped!${NC}"

@@ -107,7 +107,6 @@ else
 fi
 log_divider
 
-
 # 3. Start Hadoop NameNode
 log_service "Hadoop NameNode" "org.apache.hadoop.hdfs.server.namenode.NameNode" \
     "\$HADOOP_HOME/sbin/hadoop-daemon.sh start namenode"
@@ -132,4 +131,8 @@ log_service "Hive Metastore" "org.apache.hadoop.hive.metastore.HiveMetaStore" \
 log_service "HiveServer2" "org.apache.hive.service.server.HiveServer2" \
     "\$HIVE_HOME/bin/hive --service hiveserver2 &"
 
-echo -e "${GREEN}🎉 All Hadoop, Hive and PostgreSQL services are up and running!${NC}"
+# 9. Start MapReduce JobHistory Server (for YARN log browsing at :19888)
+log_service "MapReduce JobHistory Server" "JobHistoryServer" \
+    "\$HADOOP_HOME/sbin/mr-jobhistory-daemon.sh start historyserver"
+
+echo -e "${GREEN}🎉 All Hadoop, Hive, and PostgreSQL services are up and running!${NC}"

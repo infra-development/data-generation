@@ -21,8 +21,8 @@ log_status() {
     fi
 }
 
-echo -e "${CYAN}Verifying Hadoop, Hive, and PostgreSQL Services${NC}"
-echo "------------------------------------------------"
+echo -e "${CYAN}🔍 Verifying Hadoop, Hive, ZooKeeper, and PostgreSQL Services${NC}"
+echo -e "${CYAN}------------------------------------------------------------${NC}"
 
 # 1. ZooKeeper
 pgrep -f 'org.apache.zookeeper.server.quorum.QuorumPeerMain' > /dev/null 2>&1
@@ -56,5 +56,9 @@ log_status "Hive Metastore" $?
 pgrep -f 'org.apache.hive.service.server.HiveServer2' > /dev/null 2>&1
 log_status "HiveServer2" $?
 
-echo "------------------------------------------------"
-echo -e "${CYAN}Verification Complete.${NC}"
+# 9. MapReduce JobHistory Server
+pgrep -f 'JobHistoryServer' > /dev/null 2>&1
+log_status "MapReduce JobHistory Server" $?
+
+echo -e "${CYAN}------------------------------------------------------------${NC}"
+echo -e "${GREEN}✅ Verification Complete.${NC}"
