@@ -15,7 +15,7 @@ object FinanceDataGenHelper {
     logger.debug("Creating Spark session...")
     val spark: SparkSession = SparkSession.builder()
       .appName("Finance Data Generator")
-//      .master("local[*]") // For local testing
+      .master("local[*]") // For local testing
       .enableHiveSupport()
       .getOrCreate()
 
